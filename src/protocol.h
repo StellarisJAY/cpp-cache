@@ -90,6 +90,7 @@ namespace kvstore
     static RedisError ErrWrongType = std::string("WRONGTYPE Operation against a key holding the wrong kind of value");
     static RedisError ErrWrongNumberOfArgs = std::string("ERR wrong number of arguments for command");
     static RedisError ErrNotIntegerOrOutOfRange = std::string("ERR value is not an integer or out of range");
+    static RedisError ErrDbIdxOutOfRange = std::string("ERR DB index is out of range");
 }
 
 #endif

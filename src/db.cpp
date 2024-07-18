@@ -308,6 +308,22 @@ namespace kvstore
         response.setOK();
     }
 
+    void handleSelect(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
+    {
+        if (argc != 2) {
+            response.setError(ErrWrongNumberOfArgs);
+            return;
+        }
+        auto idxStr = argv[1].getData<std::string>().value();
+        int idx = atoi(idxStr.c_str());
+        if (idx < 0 || idx >= 16) {
+            response.setError(ErrDbIdxOutOfRange);
+            return;
+        }
+        conn->selectedDB = idx;
+        response.setOK();
+    }
+
     void Database::init()
     {
         REG_COMMAND("set", handleSet);
@@ -328,6 +344,7 @@ namespace kvstore
         REG_COMMAND("ttl", handleTTL);
         REG_COMMAND("expire", handleExpire);
         REG_COMMAND("keys", handleKeys);
+        REG_COMMAND("select", handleSelect);
 
         REG_COMMAND("command", handleCOMMAND);
     }
