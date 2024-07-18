@@ -96,7 +96,6 @@ namespace kvstore
         auto reqBuf = buf.substr(0, n);
         std::optional<RESPCommand> dec = codec.decode(reqBuf);
         if (dec.has_value()) {
-            // todo db handle
             RESPCommand resp;
             db.handleCommand(dec.value(), resp, conn);
             conn->writeBuffer = codec.encode(resp);
