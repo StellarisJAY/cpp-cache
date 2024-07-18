@@ -11,6 +11,7 @@
 #include <conn.h>
 #include <memory>
 #include <chrono>
+#include <zset.h>
 
 namespace kvstore
 {
@@ -27,13 +28,14 @@ namespace kvstore
     typedef std::list<std::string>* List;
     typedef std::unordered_map<std::string,std::string>* Hash;
     typedef std::unordered_set<std::string>* Set;
+    typedef kvstore::SortedSet* ZSet;
     class Entry
     {
     public:
         Entry(): type(EMPTY) {};
-        Entry(DataType type, std::variant<std::string, List, Hash, Set> data): type(type), data(data) {}
+        Entry(DataType type, std::variant<std::string, List, Hash, Set, ZSet> data): type(type), data(data) {}
         DataType type;
-        std::variant<std::string, List, Hash, Set> data;
+        std::variant<std::string, List, Hash, Set, ZSet> data;
     };
 
     class Database
@@ -45,7 +47,7 @@ namespace kvstore
         void init();
         void handleCommand(RESPCommand &req, RESPCommand &resp, std::shared_ptr<ClientConn> conn);
         Entry& getEntry(int idx, std::string key);
-        void putEntry(int idx, std::string key, std::variant<std::string, List, Hash, Set> data, DataType type);
+        void putEntry(int idx, std::string key, std::variant<std::string, List, Hash, Set, ZSet> data, DataType type);
         void delEntry(int idx, std::string key);
         int dbSize(int idx);
         std::optional<std::chrono::time_point<std::chrono::system_clock>> getTTL(int idx, std::string key);

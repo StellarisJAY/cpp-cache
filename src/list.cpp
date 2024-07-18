@@ -156,9 +156,9 @@ namespace kvstore
             }else {
                 response.setError(ErrWrongType);
             }
-        }catch(std::invalid_argument e) {
+        }catch(std::invalid_argument const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
-        }catch(std::out_of_range e) {
+        }catch(std::out_of_range const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
         }
     }
@@ -192,9 +192,33 @@ namespace kvstore
             }else {
                 response.setError(ErrWrongType);
             }
-        }catch(std::invalid_argument e) {
+        }catch(std::invalid_argument const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
-        }catch(std::out_of_range e) {
+        }catch(std::out_of_range const& e) {
+            response.setError(ErrNotIntegerOrOutOfRange);
+        }
+    }
+
+    void handleLLen(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
+    {
+        if (argc != 2) {
+            response.setError(ErrWrongNumberOfArgs);
+            return;
+        }
+        auto key = argv[1].getData<std::string>().value();
+        try {
+            auto entry = db->getEntry(conn->selectedDB, key);
+            if (entry.type == LIST) {
+                auto list = std::get<List>(entry.data);
+                response.setInt(list->size());
+            }else if (entry.type == EMPTY) {
+                response.setInt(0);
+            }else {
+                response.setError(ErrWrongType);
+            }
+        }catch(std::invalid_argument const& e) {
+            response.setError(ErrNotIntegerOrOutOfRange);
+        }catch(std::out_of_range const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
         }
     }

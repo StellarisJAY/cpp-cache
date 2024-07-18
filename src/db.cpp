@@ -37,7 +37,7 @@ namespace kvstore
         }
     }
 
-    void Database::putEntry(int idx, std::string key, std::variant<std::string, List, Hash, Set> value, DataType type)
+    void Database::putEntry(int idx, std::string key, std::variant<std::string, List, Hash, Set, ZSet> value, DataType type)
     {
         if (idx > 16 || idx < 0) {
             throw new std::out_of_range("db idx out of range");
@@ -277,9 +277,9 @@ namespace kvstore
             }
             db->setExpire(conn->selectedDB, key, seconds);
             response.setInt(1);
-        }catch(std::invalid_argument e) {
+        }catch(std::invalid_argument const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
-        }catch(std::out_of_range e) {
+        }catch(std::out_of_range const& e) {
             response.setError(ErrNotIntegerOrOutOfRange);
         }
     }
@@ -319,6 +319,7 @@ namespace kvstore
         REG_COMMAND("rpop", handleRPop);
         REG_COMMAND("lindex", handleLIndex);
         REG_COMMAND("lrange", handleLRange);
+        REG_COMMAND("llen", handleLLen);
 
         REG_COMMAND("strlen", handleStrlen);
         REG_COMMAND("dbsize", handleDBSize);
@@ -327,5 +328,7 @@ namespace kvstore
         REG_COMMAND("ttl", handleTTL);
         REG_COMMAND("expire", handleExpire);
         REG_COMMAND("keys", handleKeys);
+
+        REG_COMMAND("command", handleCOMMAND);
     }
 }
