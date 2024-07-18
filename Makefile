@@ -42,3 +42,7 @@ clean:
 test: $(TEST_TARGET)
 	@echo running tests...
 	@$(TEST_TARGET)
+
+.PHONY:strip-all
+strip-all: $(TARGET)
+	@objcopy --strip-all $(TARGET)
