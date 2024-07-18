@@ -6,6 +6,7 @@
 #include <exception>
 #include <iostream>
 #include "list.h"
+#include "pattern.h"
 
 #define REG_COMMAND(name, func) \
         handlers.insert(std::make_pair<std::string, cmdHandler>(std::string(name), func));
@@ -284,6 +285,45 @@ namespace kvstore
         }
     }
 
+    bool matchChar(char s, char p)
+    {
+        return s == p || p == '.';
+    }
+
+    bool matchPattern(std::string key, std::string pattern)
+    {
+        // s[0...n-1], p[0...m-1], i[1...n], j[1...m]
+        // dp[i][j] = s[..i] matches p[..j]
+        // if p[j-1] == '*':
+        //      dp[i][j] = dp[i-1][j] || dp[i][j-1]
+        // else:
+        //      dp[i][j] = matches(s[i-1],p[j-1]) && dp[i-1][j-1]
+        // specials:
+        // dp[0][0] = true, dp[...][0] = false, dp[0][j] = dp[0][j-1] && p[j-1] == '*'
+        int m = key.length();
+        int n = pattern.length();
+        bool dp[m+1][n+1];
+        for (int i = 0; i <= m; i++) {
+            for (int j = 0; j <= n; j++) {
+                dp[i][j] = false;
+            }
+        }
+        dp[0][0] = true;
+        for (int j = 1; j <= n; j++) {
+            dp[0][j] = dp[0][j-1] && pattern[j-1] == '*';
+        }
+        for(int i = 1; i <= m; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (pattern[j-1] == '*') {
+                    dp[i][j] = dp[i-1][j] || dp[i][j-1];
+                }else {
+                    dp[i][j] = matchChar(key[i-1], pattern[j-1]) && dp[i-1][j-1];
+                }
+            }
+        }
+        return dp[m][n];
+    }
+
     void handleKeys(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
     {
         auto dict = db->getDict(conn->selectedDB);
@@ -291,18 +331,19 @@ namespace kvstore
             response.setEmptyArray();
             return;
         }
+        auto pattern = argv[1].getData<std::string>().value();
         auto result = std::vector<RESPCommand>();
         for (auto it = dict->begin(); it != dict->end(); it++) {
             auto key = it->first;
-            // todo pattern matching
-            if (db->getEntry(conn->selectedDB, key).type != EMPTY) {
+            auto entry = db->getEntry(conn->selectedDB, key);
+            if (entry.type != EMPTY && matchPattern(key, pattern)) {
                 result.push_back(RESPCommand(key, true));
             }
         }
         response.setType(ARRAY);
         response.setData(result);
     }
-
+    
     void handleCOMMAND(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
     {
         response.setOK();
