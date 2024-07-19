@@ -20,7 +20,7 @@ namespace kvstore
         {
             return fd;
         }
-        int selectedDB;
+        int selectedDB = 0;
     private:
         int fd;
         std::string writeBuffer;
