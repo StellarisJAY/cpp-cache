@@ -37,7 +37,7 @@ namespace kvstore
 
     std::optional<RESPCommand> decodeArray(std::string buf)
     {
-        std::vector<RESPCommand> array;
+        std::vector<RESPCommand> *array = new std::vector<RESPCommand>();
         try {
             std::string::iterator it = buf.begin();
             for (; it != buf.end(); it++) {
@@ -58,7 +58,7 @@ namespace kvstore
                     if (!nested.has_value()) return std::nullopt;
                     nestedLength = nested.value().getData<std::string>().value().length();
                     it += nestedLength + 4 + numCharLength(nestedLength) + 1;
-                    array.push_back(nested.value());
+                    array->push_back(nested.value());
                     break;
                 case INT:
                 case ERROR:
@@ -95,9 +95,9 @@ namespace kvstore
             stream << (char)getType() << getData<int>().value() << CRLF;
             break;
         case ARRAY:
-            auto array = getData<std::vector<RESPCommand>>().value();
-            stream << (char)getType() << array.size() << CRLF;
-            for (auto it = array.begin(); it != array.end(); it++) {
+            auto array = getData<std::vector<RESPCommand>*>().value();
+            stream << (char)getType() << array->size() << CRLF;
+            for (auto it = array->begin(); it != array->end(); it++) {
                 stream << (*it).toString();
             }
             break;

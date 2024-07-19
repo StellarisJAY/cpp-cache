@@ -143,12 +143,12 @@ namespace kvstore
                     return;
                 }
                 auto it = list->begin();
-                auto result = std::vector<RESPCommand>();
+                auto result = new std::vector<RESPCommand>();
                 for (int i = 0; i < start; i++) {
                     it++;
                 }
                 for (; it != list->end() && start <= end; it++) {
-                    result.push_back(RESPCommand(*it, true));
+                    result->push_back(RESPCommand(*it, true));
                     start++;
                 }
                 response.setType(ARRAY);

@@ -22,7 +22,7 @@ namespace kvstore
     {
     private:
         RESPCommandType type;
-        std::variant<int, std::string, std::vector<RESPCommand>> data;
+        std::variant<int, std::string, std::vector<RESPCommand>*> data;
     public:
         template <typename T>
         std::optional<T> getData()
@@ -38,7 +38,7 @@ namespace kvstore
                 if (std::is_same<T, std::string>::value) return std::make_optional(std::get<T>(data));
                 break;
             case ARRAY:
-                if (std::is_same<T, std::vector<RESPCommand>>::value) return std::make_optional(std::get<T>(data));
+                if (std::is_same<T, std::vector<RESPCommand>*>::value) return std::make_optional(std::get<T>(data));
                 break;
             case ERROR:
                 if (std::is_same<T, std::string>::value) return std::make_optional(std::get<T>(data));
@@ -53,12 +53,19 @@ namespace kvstore
         }
         RESPCommand(int data): data(data), type(INT) {}
         RESPCommand(std::string data, bool bulk): data(data), type(bulk?BULK:SIMPLE) {}
-        RESPCommand(std::vector<RESPCommand> data): data(data), type(ARRAY) {}
+        RESPCommand(std::vector<RESPCommand> *data): data(data), type(ARRAY) {}
         RESPCommand(RedisError error): data(error), type(ERROR) {}
         RESPCommand(){}
+        ~RESPCommand() 
+        {
+            if (type == ARRAY) {
+                auto data = std::get<std::vector<RESPCommand>*>(this->data);
+                if(data != nullptr) delete data;
+            }
+        }
         std::string toString();
         void setType(RESPCommandType type) {this->type = type;}
-        void setData(std::variant<int, std::string, std::vector<RESPCommand>> data) {this->data = data;}
+        void setData(std::variant<int, std::string, std::vector<RESPCommand>*> data) {this->data = data;}
         void setError(RedisError error) {
             type = ERROR;
             data = error;
@@ -75,7 +82,7 @@ namespace kvstore
         void setEmptyArray()
         {
             type = ARRAY;
-            data = std::vector<RESPCommand>();
+            data = new std::vector<RESPCommand>();
         }
     };
 

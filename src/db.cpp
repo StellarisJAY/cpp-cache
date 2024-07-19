@@ -48,18 +48,18 @@ namespace kvstore
 
     void Database::handleCommand(RESPCommand& req, RESPCommand& resp, std::shared_ptr<ClientConn> conn)
     {
-        auto array = req.getData<std::vector<RESPCommand>>().value();
-        if (array.size() == 0) {
+        auto array = req.getData<std::vector<RESPCommand>*>().value();
+        if (array->size() == 0) {
             resp.setError(ErrUnknownCommand);
             return;
         }
-        std::string cmdName = array[0].getData<std::string>().value();
+        std::string cmdName = (*array)[0].getData<std::string>().value();
         auto handler = this->handlers[cmdName];
         if (!handler) {
             resp.setOK();
             return;
         }
-        handler(this, array.size(), array, conn, resp);
+        handler(this, array->size(), *array, conn, resp);
     }
 
     int Database::dbSize(int idx)
@@ -285,45 +285,6 @@ namespace kvstore
         }
     }
 
-    bool matchChar(char s, char p)
-    {
-        return s == p || p == '.';
-    }
-
-    bool matchPattern(std::string key, std::string pattern)
-    {
-        // s[0...n-1], p[0...m-1], i[1...n], j[1...m]
-        // dp[i][j] = s[..i] matches p[..j]
-        // if p[j-1] == '*':
-        //      dp[i][j] = dp[i-1][j] || dp[i][j-1]
-        // else:
-        //      dp[i][j] = matches(s[i-1],p[j-1]) && dp[i-1][j-1]
-        // specials:
-        // dp[0][0] = true, dp[...][0] = false, dp[0][j] = dp[0][j-1] && p[j-1] == '*'
-        int m = key.length();
-        int n = pattern.length();
-        bool dp[m+1][n+1];
-        for (int i = 0; i <= m; i++) {
-            for (int j = 0; j <= n; j++) {
-                dp[i][j] = false;
-            }
-        }
-        dp[0][0] = true;
-        for (int j = 1; j <= n; j++) {
-            dp[0][j] = dp[0][j-1] && pattern[j-1] == '*';
-        }
-        for(int i = 1; i <= m; i++) {
-            for (int j = 1; j <= n; j++) {
-                if (pattern[j-1] == '*') {
-                    dp[i][j] = dp[i-1][j] || dp[i][j-1];
-                }else {
-                    dp[i][j] = matchChar(key[i-1], pattern[j-1]) && dp[i-1][j-1];
-                }
-            }
-        }
-        return dp[m][n];
-    }
-
     void handleKeys(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
     {
         auto dict = db->getDict(conn->selectedDB);
@@ -331,13 +292,13 @@ namespace kvstore
             response.setEmptyArray();
             return;
         }
-        auto pattern = argv[1].getData<std::string>().value();
-        auto result = std::vector<RESPCommand>();
-        for (auto it = dict->begin(); it != dict->end(); it++) {
-            auto key = it->first;
-            auto entry = db->getEntry(conn->selectedDB, key);
-            if (entry.type != EMPTY && matchPattern(key, pattern)) {
-                result.push_back(RESPCommand(key, true));
+        auto patStr = argv[1].getData<std::string>().value();
+        auto result = new std::vector<RESPCommand>();
+        std::vector<Pattern> patterns = Pattern::parse(patStr);
+        for(auto it = dict->begin(); it != dict->end(); it++) {
+            std::string key = it->first;
+            if (Pattern::matchKey(key, patterns)) {
+                result->push_back(RESPCommand(key, true));
             }
         }
         response.setType(ARRAY);
@@ -365,6 +326,14 @@ namespace kvstore
         response.setOK();
     }
 
+    void handleFlushDB(Database *db, int argc, std::vector<RESPCommand> argv, std::shared_ptr<ClientConn> conn, RESPCommand& response)
+    {
+        int dbIdx = conn->selectedDB;
+        auto dict = db->getDict(dbIdx);
+        dict->clear();
+        response.setOK();
+    }
+
     void Database::init()
     {
         REG_COMMAND("set", handleSet);
@@ -386,6 +355,7 @@ namespace kvstore
         REG_COMMAND("expire", handleExpire);
         REG_COMMAND("keys", handleKeys);
         REG_COMMAND("select", handleSelect);
+        REG_COMMAND("flushdb", handleFlushDB);
 
         REG_COMMAND("command", handleCOMMAND);
     }
